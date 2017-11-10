@@ -1,7 +1,9 @@
 from datetime import datetime
 from uttils import as_dict
 
+
 class HFRadarMapper(object):
+    """Mapper for new type of data from hf.met.no"""
 
     col_names = []
     data = []
@@ -16,29 +18,40 @@ class HFRadarMapper(object):
         'other': {}
     }
 
-    def __init__(self):
-        pass
+    def __init__(self, uri):
+        self.uri = uri
+        self.mapper()
 
-    def mapper(self, uri):
+    def mapper(self):
+        # Dict for accumulation of additional metadata from the input file
+        # The metadata will be used for validation of data mapping
         tmp = {}
 
         # There are several tables in a rvl file. We need only first.
         # We also need to get an information about col names only for first table
         # The <tab_flag> is used for excepting of data overwriting in similar fields
-
         tab_flag = True
 
-        with open(uri, 'r') as data_file:
+        with open(self.uri, 'r') as data_file:
             for line in data_file:
                 line = line.strip()
+
+                # According to the file structure, the first symbol in all lines with metadata is <%>
+                # Thus if condition is True - we got a line with metadata => we parse it
                 if line[0] is '%':
+
+                    # Patter for metadata row is <tag>:<values>
                     try:
                         tag, value = [el.strip() for el in line.replace('%', '').split(': ')]
+                    # If we have got a row without <values> then return only tag
                     except ValueError:
                         tag = line.replace('%', '')
+
                     # General metadata parsing
                     if tag == 'FileType':
+
                         self.metadata['general']['type'] = as_dict(value=value, f_field=tag)
+                        print self.metadata
                     elif tag == 'UUID':
                         self.metadata['general']['id'] = as_dict(value=value, f_field=tag)
                     elif tag == 'Manufacturer':
@@ -58,7 +71,7 @@ class HFRadarMapper(object):
 
                     # Geolocation metadata
                     elif tag == 'Origin':
-                        value = [float(el) for el in value]
+                        value = [float(el.strip()) for el in value.split()]
                         self.metadata['geolocation']['origin'] = as_dict(value=value, unit='m', f_field=tag)
                     elif tag == 'GreatCircle':
                         self.metadata['geolocation']['great circle'] = as_dict(value=value.split(), unit='m',
@@ -109,7 +122,7 @@ class HFRadarMapper(object):
                     elif tag == 'RadialBraggNoiseThreshold':
                         self.metadata['radial']['bragg_noise_threshold'] = as_dict(value=value, f_field=tag)
 
-                    # Table data and metadata parsing methods
+                    # Table data (column names), and validation metadata parsing
                     elif tag == 'TableColumnTypes' and tab_flag:
                         self.col_names = value.split()
                     elif tag == 'TableColumns' and tab_flag:
@@ -126,13 +139,15 @@ class HFRadarMapper(object):
                     elif tag == 'RangeResolutionKMeters':
                         self.metadata['other']['range_resol'] = as_dict(value=float(value), unit='km', f_field=tag)
                     elif tag == 'CurrentVelocityLimit':
-                        scale, unit = value.split()
                         self.metadata['other']['current_vel_lim'] = as_dict(value=float(value), unit=unit, f_field=tag)
 
+                # If False - we got a line from the table => parse it and add to the <data> array
                 elif line[0] is not '%' and tab_flag:
                     self.data.append(line.split())
 
         # Validation of data reading
+        # Since the input file contains some data as numbers of columns and rows in the table
+        # we can make validation of accumulated data by that parameters
         if len(self.col_names) != tmp['col_num']:
             raise ValueError
 
