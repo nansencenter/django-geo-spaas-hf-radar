@@ -1,10 +1,13 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from uttils import as_dict
+import numpy as np
 
 
 class HFRadarMapper(object):
     """Mapper for new type of data from hf.met.no"""
 
+    time_coverage = None
+    geolocation = None
     col_names = []
     data = []
     metadata = {
@@ -21,6 +24,9 @@ class HFRadarMapper(object):
     def __init__(self, uri):
         self.uri = uri
         self.mapper()
+        self.data = np.array(self.data)
+        self.get_time_coverage()
+        self.get_geolocation()
 
     def mapper(self):
         # Dict for accumulation of additional metadata from the input file
@@ -49,9 +55,7 @@ class HFRadarMapper(object):
 
                     # General metadata parsing
                     if tag == 'FileType':
-
                         self.metadata['general']['type'] = as_dict(value=value, f_field=tag)
-                        print self.metadata
                     elif tag == 'UUID':
                         self.metadata['general']['id'] = as_dict(value=value, f_field=tag)
                     elif tag == 'Manufacturer':
@@ -67,8 +71,8 @@ class HFRadarMapper(object):
                     elif tag == 'TimeZone':
                         self.metadata['time']['zone'] = as_dict(value=value, f_field=tag)
                     elif tag == 'TimeCoverage':
-                        self.metadata['time']['zone'] = as_dict(value=value, unit='m', f_field=tag)
-
+                        self.metadata['time']['coverage'] = as_dict(value=float(value.split()[0]),
+                                                                    unit='m', f_field=tag)
                     # Geolocation metadata
                     elif tag == 'Origin':
                         value = [float(el.strip()) for el in value.split()]
@@ -143,7 +147,7 @@ class HFRadarMapper(object):
 
                 # If False - we got a line from the table => parse it and add to the <data> array
                 elif line[0] is not '%' and tab_flag:
-                    self.data.append(line.split())
+                    self.data.append([float(el.strip()) for el in line.strip().split()])
 
         # Validation of data reading
         # Since the input file contains some data as numbers of columns and rows in the table
@@ -156,3 +160,20 @@ class HFRadarMapper(object):
 
         elif len(self.data[0]) != tmp['col_num']:
             raise ValueError
+
+    def get_time_coverage(self):
+        """Time coverage of data file from metadata"""
+        dt = timedelta(0, 0, 0, 0, self.metadata['time']['coverage']['value'])
+        time_start = self.metadata['time']['stamp']['value']
+        self.time_coverage = (time_start, time_start + dt)
+
+    def get_geolocation(self):
+        """Geolocation in format tuple()"""
+        lon_min = self.data.T[0].min()
+        lon_max = self.data.T[0].max()
+
+        lat_min = self.data.T[1].min()
+        lat_max = self.data.T[1].max()
+
+        self.geolocation = ((lon_min, lon_max),
+                            (lat_min, lat_max))
