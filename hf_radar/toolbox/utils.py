@@ -13,3 +13,11 @@ def get_data(uri):
         dataset = OldHfMapper(uri)
 
     return dataset
+
+
+class AlreadyExists(Exception):
+    pass
+
+
+class EmptyFile(Exception):
+    pass

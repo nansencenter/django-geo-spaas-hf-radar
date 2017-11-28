@@ -3,6 +3,7 @@ from django.core.management.base import BaseCommand
 from geospaas.utils import uris_from_args
 from geospaas.catalog.models import Dataset as CatalogDataset
 from hf_radar.models import Dataset
+from hf_radar.toolbox.utils import AlreadyExists, EmptyFile
 
 
 class Command(BaseCommand):
@@ -20,11 +21,17 @@ class Command(BaseCommand):
         for non_ingested_uri in uris_from_args(*args):
 
             self.stdout.write('Ingesting %s ...\n' % non_ingested_uri)
-            ds, cr = Dataset.objects.get_or_create(non_ingested_uri, **options)
+            try:
+                ds, cr = Dataset.objects.get_or_create(non_ingested_uri, **options)
 
-            if not type(ds) == CatalogDataset:
-                self.stdout.write('Not found: %s\n' % non_ingested_uri)
-            elif cr:
-                self.stdout.write('Successfully added: %s\n' % non_ingested_uri)
-            else:
+                if not type(ds) == CatalogDataset:
+                    self.stdout.write('Not found: %s\n' % non_ingested_uri)
+                elif cr:
+                    self.stdout.write('Successfully added: %s\n' % non_ingested_uri)
+                else:
+                    self.stdout.write('Was already added: %s\n' % non_ingested_uri)
+
+            except AlreadyExists:
                 self.stdout.write('Was already added: %s\n' % non_ingested_uri)
+            except EmptyFile:
+                self.stdout.write('No data %s ...\n' % non_ingested_uri)
