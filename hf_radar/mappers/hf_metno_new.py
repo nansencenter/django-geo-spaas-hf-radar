@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from uttils import as_dict
 import numpy as np
+from hf_radar.toolbox.utils import EmptyFile
 
 
 class HFRadarMapper(object):
@@ -145,7 +146,13 @@ class HFRadarMapper(object):
                     elif tag == 'RangeResolutionKMeters':
                         metadata['other']['range_resol'] = as_dict(value=float(value), unit='km', f_field=tag)
                     elif tag == 'CurrentVelocityLimit':
-                        metadata['other']['current_vel_lim'] = as_dict(value=float(value), unit=unit, f_field=tag)
+                        # <tvf> file contains units for the field, while <rvf> files does not.
+                        # So i we can extract two values from tre field we will do that, else: take only scale
+                        try:
+                            scale, unit = value.split()
+                            metadata['other']['current_vel_lim'] = as_dict(value=float(scale), unit=unit, f_field=tag)
+                        except ValueError:
+                            metadata['other']['current_vel_lim'] = as_dict(value=float(value), f_field=tag)
 
                 # If False - we got a line from the table => parse it and add to the <data> array
                 elif line[0] is not '%' and tab_flag:
@@ -155,13 +162,13 @@ class HFRadarMapper(object):
         # Since the input file contains some data as numbers of columns and rows in the table
         # we can make validation of accumulated data by that parameters
 
-        print(len(data))
-        print(tmp['row_num'])
+        if len(data) == 0:
+            raise EmptyFile
+
         if len(col_names) != tmp['col_num']:
             raise ValueError
 
         if len(data) != tmp['row_num']:
-            print(tmp['row_num'], len(data))
             raise ValueError
 
         elif len(data[0]) != tmp['col_num']:
@@ -183,7 +190,8 @@ class HFRadarMapper(object):
         lat_min = self.data.T[1].min()
         lat_max = self.data.T[1].max()
 
-        self.geolocation = ((lat_max, lon_min),
-                            (lat_max, lon_max),
-                            (lat_min, lon_min),
-                            (lat_min, lon_max))
+        self.geolocation = ((lon_min, lat_min),
+                            (lon_min, lat_max),
+                            (lon_max, lat_max),
+                            (lon_max, lat_min),
+                            (lon_min, lat_min),)
