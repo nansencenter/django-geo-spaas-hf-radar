@@ -5,7 +5,7 @@ from geospaas.catalog.models import Dataset as CatalogDataset
 from hf_radar.managers import DatasetManager
 
 
-class Dataset(CatalogDataset):
+class HfRatarDataset(CatalogDataset):
 
     objects = DatasetManager()
 
