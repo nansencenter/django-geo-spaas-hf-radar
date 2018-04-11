@@ -17,7 +17,3 @@ def get_data(uri):
 
 class AlreadyExists(Exception):
     pass
-
-
-class EmptyFile(Exception):
-    pass

@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 from uttils import as_dict
 import numpy as np
-from hf_radar.toolbox.utils import EmptyFile
 
 
 class HFRadarMapper(object):
@@ -163,7 +162,7 @@ class HFRadarMapper(object):
         # we can make validation of accumulated data by that parameters
 
         if len(data) == 0:
-            raise EmptyFile
+            raise IOError
 
         if len(col_names) != tmp['col_num']:
             raise ValueError

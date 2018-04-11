@@ -10,7 +10,6 @@ from hf_radar.toolbox.utils import AlreadyExists
 
 
 class DatasetManager(models.Manager):
-    # TODO: Standardization of column names
 
     def set_metadata(self):
         """
@@ -41,7 +40,7 @@ class DatasetManager(models.Manager):
         """
 
         # clean input uri from file://localhost/
-        uri = nansat_filename(uri)
+        # uri = nansat_filename(uri)
 
         # Is the file in the database
         if DatasetURI.objects.filter(uri=uri):

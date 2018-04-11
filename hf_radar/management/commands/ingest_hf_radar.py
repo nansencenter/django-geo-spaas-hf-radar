@@ -22,6 +22,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
 
+        # TODO: Add uris from args
         for non_ingested_uri in options['img']:
 
             self.stdout.write('Ingesting %s ...\n' % non_ingested_uri)
