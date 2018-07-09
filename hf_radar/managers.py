@@ -9,7 +9,7 @@ import warnings
 from hf_radar.toolbox.utils import AlreadyExists
 
 
-class DatasetManager(models.Manager):
+class BaseManager(models.Manager):
 
     def set_metadata(self):
         """
@@ -26,6 +26,9 @@ class DatasetManager(models.Manager):
         iso = ISOTopicCategory.objects.get(name='Oceans')
 
         return dc, iso, src
+
+
+class DatasetManager(BaseManager):
 
     def get_or_create(self, uri, **options):
 
@@ -83,3 +86,7 @@ class DatasetManager(models.Manager):
             data_uri, duc = DatasetURI.objects.get_or_create(uri=uri, dataset=ds)
 
         return ds, ds_cr
+
+
+class FinnmarkDatasetManager(BaseManager):
+    pass
