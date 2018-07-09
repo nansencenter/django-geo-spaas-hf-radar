@@ -1,6 +1,6 @@
 from django.db import models
 import os
-from django.contrib.gis.geos import LineString
+from django.contrib.gis.geos import LineString, Polygon
 from geospaas.utils import validate_uri, nansat_filename
 from geospaas.vocabularies.models import Platform, Instrument, DataCenter, ISOTopicCategory
 from geospaas.catalog.models import GeographicLocation, Source, Dataset, DatasetURI
@@ -8,10 +8,15 @@ from hf_radar.toolbox.utils import get_data
 import warnings
 from hf_radar.toolbox.utils import AlreadyExists
 
+from netCDF4 import Dataset
+from datetime import datetime, timedelta
+from nansat import Domain
+
 
 class BaseManager(models.Manager):
 
-    def set_metadata(self):
+    @staticmethod
+    def set_metadata():
         """
         :param plat: platform name from the metadata
         :return:
@@ -26,6 +31,11 @@ class BaseManager(models.Manager):
         iso = ISOTopicCategory.objects.get(name='Oceans')
 
         return dc, iso, src
+
+    @staticmethod
+    def check_in_db(uri):
+        if DatasetURI.objects.filter(uri=uri):
+            raise AlreadyExists
 
 
 class DatasetManager(BaseManager):
@@ -89,4 +99,41 @@ class DatasetManager(BaseManager):
 
 
 class FinnmarkDatasetManager(BaseManager):
-    pass
+
+    def get_or_create(self, uri, **options):
+        # check if the file already exists in database
+        BaseManager.check_in_db(uri)
+        data_center, iso, source = BaseManager.set_metadata()
+        self.dataset = Dataset(uri)
+        geometry = self.geolocation()
+        geoloc, geo_cr = GeographicLocation.objects.get_or_create(geometry=geometry)
+        timestamps = self.get_timestamps()
+
+        for timestamp in timestamps:
+            # Create object in database
+            ds, ds_cr = Dataset.objects.get_or_create(
+                entry_title=self.dataset['title'],
+                ISO_topic_category=iso,
+                data_center=data_center,
+                summary='',
+                time_coverage_start=timestamp,
+                time_coverage_end=timestamp + timedelta(hours=1),
+                source=source,
+                geographic_location=geoloc)
+
+            if ds_cr:
+                data_uri, duc = DatasetURI.objects.get_or_create(uri=uri, dataset=ds)
+
+    def get_timestamps(self):
+        time_metadata = self.dataset.variables['time'].units
+        seconds_from = datetime.strptime(time_metadata.split()[-1], '%Y-%d-%m')
+
+        timestemps_seconds = [int(timestp) for timestp in self.dataset.variables['time'][:]]
+        time_stamps = [seconds_from + timedelta(seconds=sec) for sec in timestemps_seconds]
+        return time_stamps
+
+    def geolocation(self):
+        d = Domain(lat=self.dataset.variables['lat'][:],
+                   lon=self.dataset.variables['lon'][:])
+        poly = Polygon(zip(*d.get_border()))
+        return poly
