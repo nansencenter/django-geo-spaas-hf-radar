@@ -1,0 +1,10 @@
+[{
+  "fields": {
+    "category": "",
+    "long_name": "",
+    "series_entity": "",
+    "short_name": "CODAR"
+  },
+  "model": "vocabularies.platform",
+  "pk": 999
+}]
