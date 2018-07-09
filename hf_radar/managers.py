@@ -8,7 +8,7 @@ from hf_radar.toolbox.utils import get_data
 import warnings
 from hf_radar.toolbox.utils import AlreadyExists
 
-from netCDF4 import Dataset
+from netCDF4 import Dataset as netCDFDataset
 from datetime import datetime, timedelta
 from nansat import Domain
 
@@ -104,15 +104,15 @@ class FinnmarkDatasetManager(BaseManager):
         # check if the file already exists in database
         BaseManager.check_in_db(uri)
         data_center, iso, source = BaseManager.set_metadata()
-        self.dataset = Dataset(uri)
-        geometry = self.geolocation()
+        dataset = netCDFDataset(uri)
+        geometry = self.geolocation(dataset)
         geoloc, geo_cr = GeographicLocation.objects.get_or_create(geometry=geometry)
-        timestamps = self.get_timestamps()
+        timestamps = self.get_timestamps(dataset)
 
         for timestamp in timestamps:
             # Create object in database
             ds, ds_cr = Dataset.objects.get_or_create(
-                entry_title=self.dataset['title'],
+                entry_title=dataset.title,
                 ISO_topic_category=iso,
                 data_center=data_center,
                 summary='',
@@ -124,16 +124,16 @@ class FinnmarkDatasetManager(BaseManager):
             if ds_cr:
                 data_uri, duc = DatasetURI.objects.get_or_create(uri=uri, dataset=ds)
 
-    def get_timestamps(self):
-        time_metadata = self.dataset.variables['time'].units
+    def get_timestamps(self, dataset):
+        time_metadata = dataset.variables['time'].units
         seconds_from = datetime.strptime(time_metadata.split()[-1], '%Y-%d-%m')
 
-        timestemps_seconds = [int(timestp) for timestp in self.dataset.variables['time'][:]]
+        timestemps_seconds = [int(timestp) for timestp in dataset.variables['time'][:]]
         time_stamps = [seconds_from + timedelta(seconds=sec) for sec in timestemps_seconds]
         return time_stamps
 
-    def geolocation(self):
-        d = Domain(lat=self.dataset.variables['lat'][:],
-                   lon=self.dataset.variables['lon'][:])
+    def geolocation(self, dataset):
+        d = Domain(lat=dataset.variables['lat'][:],
+                   lon=dataset.variables['lon'][:])
         poly = Polygon(zip(*d.get_border()))
         return poly
