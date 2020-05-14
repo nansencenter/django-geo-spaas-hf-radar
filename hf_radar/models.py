@@ -2,20 +2,11 @@ from __future__ import unicode_literals
 
 from django.db import models
 from geospaas.catalog.models import Dataset as CatalogDataset
-from hf_radar.managers import DatasetManager, FinnmarkDatasetManager
+from hf_radar.managers import HFRDatasetManager
 
+class HFRDataset(CatalogDataset):
 
-class HfRatarFedjeDataset(CatalogDataset):
-
-    objects = DatasetManager()
-
-    class Meta:
-        proxy = True
-
-
-class HfRatarFinnmarkDataset(CatalogDataset):
-
-    objects = FinnmarkDatasetManager()
+    objects = HFRDatasetManager()
 
     class Meta:
         proxy = True

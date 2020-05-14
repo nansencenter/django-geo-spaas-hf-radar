@@ -1,9 +1,8 @@
 from django.core.management.base import BaseCommand
-
-from geospaas.utils import uris_from_args
 from geospaas.catalog.models import Dataset as CatalogDataset
-from hf_radar.models import HfRatarDataset
-from hf_radar.toolbox.utils import AlreadyExists
+from hf_radar.models import HFRDataset
+from datetime import datetime 
+from geospaas.utils.utils import uris_from_args
 
 
 class Command(BaseCommand):
@@ -12,31 +11,22 @@ class Command(BaseCommand):
            'display in Leaflet'
 
     def add_arguments(self, parser):
-        parser.add_argument('img',
-                            nargs='*',
-                            type=str)
+        # Input files
+        parser.add_argument('input_files', nargs='*', type=str)
 
-        parser.add_argument('--reprocess',
-                            action='store_true',
-                            help='Force reprocessing')
 
     def handle(self, *args, **options):
-
-        # TODO: Add uris from args
-        for non_ingested_uri in options['img']:
-
-            self.stdout.write('Ingesting %s ...\n' % non_ingested_uri)
-            try:
-                ds, cr = HfRatarDataset.objects.get_or_create(non_ingested_uri, **options)
-
-                if not type(ds) == CatalogDataset:
-                    self.stdout.write('Not found: %s\n' % non_ingested_uri)
-                elif cr:
-                    self.stdout.write('Successfully added: %s\n' % non_ingested_uri)
-                else:
-                    self.stdout.write('Was already added: %s\n' % non_ingested_uri)
-
-            except AlreadyExists:
-                self.stdout.write('Was already added: %s\n' % non_ingested_uri)
-            except IOError:
-                self.stdout.write('No data %s ...\n' % non_ingested_uri)
+        start_time = datetime.now()
+        non_ingested_uris = uris_from_args(options['input_files'])
+        uri_id = 1
+        for non_ingested_uri in non_ingested_uris:
+            print('[%.4d/%.4d] | %s' % (uri_id, len(non_ingested_uris), non_ingested_uri), end=' | ')
+            ds, cr = HFRDataset.objects.get_or_create(non_ingested_uri)
+            print(datetime.now() - start_time, end=' | ')
+            if cr:
+                print(self.style.SUCCESS('OK'))
+            elif ds:
+                print(self.style.WARNING('SKIP'))
+            else:
+                print(self.style.ERROR('FAILED'))
+            uri_id += 1
