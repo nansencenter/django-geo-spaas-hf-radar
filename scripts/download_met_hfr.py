@@ -3,11 +3,15 @@ from datetime import datetime
 from calendar import monthrange
 import os
 
-# Constants
+# Define root for data at the thredds server
 OpedDAP_ROOT = 'https://thredds.met.no/thredds/fileServer/remotesensinghfradar/'
+# Define origin of the radar TORU or FRUH
 origin = 'FRUH'
+# Define directory for local data storage
 dst_root = os.path.join('/src/.devcontainer/data', origin)
+# Define years 
 YEARS = [2018]
+# Define months
 MONTHS = [1]
 
 
