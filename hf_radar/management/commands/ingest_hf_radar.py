@@ -21,12 +21,19 @@ class Command(BaseCommand):
         uri_id = 1
         for non_ingested_uri in non_ingested_uris:
             print('[%.4d/%.4d] | %s' % (uri_id, len(non_ingested_uris), non_ingested_uri), end=' | ')
-            ds, cr = HFRDataset.objects.get_or_create(non_ingested_uri)
+            
+            try: 
+                ds, cr = HFRDataset.objects.get_or_create(non_ingested_uri)
+            except:
+                print(self.style.ERROR('ERROR'))
+                uri_id += 1
+                continue
             print(datetime.now() - start_time, end=' | ')
             if cr:
                 print(self.style.SUCCESS('OK'))
             elif ds:
                 print(self.style.WARNING('SKIP'))
             else:
-                print(self.style.ERROR('FAILED'))
+                print(self.style.ERROR('ERROR'))
+
             uri_id += 1
