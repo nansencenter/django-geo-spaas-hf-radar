@@ -16,14 +16,15 @@ import pythesint as pti
 
 class HFRDatasetManager(Manager):
 
-    def get_or_create(self, uri):
+    def get_or_create(self, uri, force):
         # Validate uri - this should raise an exception if the uri doesn't 
         # point to a valid file or stream
         validate_uri(uri)
         # Several datasets can refer to the same uri (e.g., scatterometers and svp drifters), so we
         # need to pass uri_filter_args
         uris = DatasetURI.objects.filter(uri=uri)
-        if len(uris) > 0:
+        # If the ingested uri is already in the database and not <force> ingestion then stop
+        if len(uris) > 0 and not force:
             return uris[0].dataset, False
         # Open file with Nansat
         n = Nansat(nansat_filename(uri))
