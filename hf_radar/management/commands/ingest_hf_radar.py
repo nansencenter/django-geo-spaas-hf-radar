@@ -21,8 +21,6 @@ class Command(ProcessingBaseCommand):
         uri_id = 1
         for non_ingested_uri in non_ingested_uris:
             print('[%.4d/%.4d] | %s' % (uri_id, len(non_ingested_uris), non_ingested_uri), end=' | ')
-            ds, cr = HFRDataset.objects.get_or_create(non_ingested_uri, options['force'])
-
             try: 
                 ds, cr = HFRDataset.objects.get_or_create(non_ingested_uri, options['force'])
             except:

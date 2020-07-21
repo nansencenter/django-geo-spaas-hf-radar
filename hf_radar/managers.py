@@ -7,7 +7,7 @@ from geospaas.utils.utils import validate_uri, nansat_filename
 from geospaas.catalog.models import GeographicLocation, Source, Dataset, DatasetURI
 from geospaas.vocabularies.models import (Platform, Instrument, DataCenter,
                                           ISOTopicCategory, Location)
-from datetime import datetime
+from datetime import datetime, timedelta
 from nansat import Domain, Nansat
 import json
 import uuid
@@ -24,8 +24,10 @@ class HFRDatasetManager(Manager):
         # need to pass uri_filter_args
         uris = DatasetURI.objects.filter(uri=uri)
         # If the ingested uri is already in the database and not <force> ingestion then stop
-        if len(uris) > 0 and not force:
+        if uris.exists() and not force:
             return uris[0].dataset, False
+        elif uris.exists() and force:
+            uris[0].dataset.delete()
         # Open file with Nansat
         n = Nansat(nansat_filename(uri))
         # get metadata from Nansat and get objects from vocabularies
@@ -45,7 +47,7 @@ class HFRDatasetManager(Manager):
         # create dataset
         ds, created = Dataset.objects.get_or_create(
                 time_coverage_start=make_aware(n.time_coverage_start),
-                time_coverage_end=make_aware(n.time_coverage_end),
+                time_coverage_end=make_aware(n.time_coverage_start + timedelta(hours=23, minutes=59, seconds=59)),
                 source=source,
                 geographic_location=geolocation,
                 ISO_topic_category=iso_category,
